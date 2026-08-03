@@ -5,75 +5,85 @@ import tempfile
 import base64
 import shutil
 import yt_dlp
-from http.server import BaseHTTPRequestHandler
 
-class handler(BaseHTTPRequestHandler):
-    def do_POST(self):
-        try:
-            content_length = int(self.headers.get('Content-Length', 0))
-            body = self.rfile.read(content_length)
-            data = json.loads(body)
-            url = data.get('url', '').strip()
+def handler(request, response):
+    if request.method == 'OPTIONS':
+        response.status_code = 200
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return response
 
-            if not url:
-                self._send_json(400, {'error': 'URL is required'})
-                return
+    if request.method != 'POST':
+        response.status_code = 405
+        response.headers['Content-Type'] = 'application/json'
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.body = json.dumps({'error': 'Method not allowed'})
+        return response
 
-            task_id = str(uuid.uuid4())[:8]
-            tmp_dir = tempfile.mkdtemp()
+    try:
+        body = json.loads(request.body)
+        url = body.get('url', '').strip()
 
-            ydl_opts = {
-                'format': 'bestaudio/best',
-                'outtmpl': os.path.join(tmp_dir, '%(title)s.%(ext)s'),
-                'ignoreerrors': True,
-                'quiet': True,
-                'no_warnings': True,
-                'noplaylist': True,
-            }
+        if not url:
+            response.status_code = 400
+            response.headers['Content-Type'] = 'application/json'
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.body = json.dumps({'error': 'URL is required'})
+            return response
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
+        task_id = str(uuid.uuid4())[:8]
+        tmp_dir = tempfile.mkdtemp()
 
-            downloaded_files = []
-            for f in os.listdir(tmp_dir):
-                file_path = os.path.join(tmp_dir, f)
-                if os.path.isfile(file_path):
-                    size = os.path.getsize(file_path)
-                    with open(file_path, 'rb') as af:
-                        audio_data = af.read()
-                        audio_base64 = base64.b64encode(audio_data).decode('utf-8')
-                    downloaded_files.append({
-                        'name': f,
-                        'size': size,
-                        'data': audio_base64
-                    })
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': os.path.join(tmp_dir, '%(title)s.%(ext)s'),
+            'ignoreerrors': True,
+            'quiet': True,
+            'no_warnings': True,
+            'noplaylist': True,
+        }
 
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
 
-            if not downloaded_files:
-                self._send_json(400, {'error': 'No downloadable content found'})
-                return
+        downloaded_files = []
+        for f in os.listdir(tmp_dir):
+            file_path = os.path.join(tmp_dir, f)
+            if os.path.isfile(file_path):
+                size = os.path.getsize(file_path)
+                with open(file_path, 'rb') as af:
+                    audio_data = af.read()
+                    audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+                downloaded_files.append({
+                    'name': f,
+                    'size': size,
+                    'data': audio_base64
+                })
 
-            self._send_json(200, {
-                'task_id': task_id,
-                'status': 'completed',
-                'files': downloaded_files
-            })
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
-        except Exception as e:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-            self._send_json(400, {'error': str(e)})
+        if not downloaded_files:
+            response.status_code = 400
+            response.headers['Content-Type'] = 'application/json'
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.body = json.dumps({'error': 'No downloadable content found'})
+            return response
 
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
+        response.status_code = 200
+        response.headers['Content-Type'] = 'application/json'
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.body = json.dumps({
+            'task_id': task_id,
+            'status': 'completed',
+            'files': downloaded_files
+        })
+        return response
 
-    def _send_json(self, status_code, data):
-        self.send_response(status_code)
-        self.send_header('Content-type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.end_headers()
-        self.wfile.write(json.dumps(data).encode())
+    except Exception as e:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        response.status_code = 400
+        response.headers['Content-Type'] = 'application/json'
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.body = json.dumps({'error': str(e)})
+        return response
