@@ -6,12 +6,12 @@ function startDownload() {
     const url = urlInput.value.trim();
 
     if (!url) {
-        showError('Please enter a YouTube playlist URL');
+        showError('Please enter a YouTube URL');
         return;
     }
 
     if (!isValidYouTubeUrl(url)) {
-        showError('Please enter a valid YouTube URL');
+        showError('Please enter a valid YouTube video or playlist URL');
         return;
     }
 
@@ -25,7 +25,12 @@ function startDownload() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url })
     })
-    .then(res => res.json())
+    .then(res => {
+        if (!res.ok) {
+            return res.json().then(data => { throw new Error(data.error || 'Server error'); });
+        }
+        return res.json();
+    })
     .then(data => {
         if (data.error) {
             throw new Error(data.error);
@@ -74,29 +79,34 @@ function downloadFile(index) {
     const file = currentFiles[index];
     if (!file || !file.data) return;
 
-    const byteCharacters = atob(file.data);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: 'audio/mpeg' });
+    try {
+        const byteCharacters = atob(file.data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'audio/mpeg' });
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = file.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        showError('Failed to download file');
+    }
 }
 
 function isValidYouTubeUrl(url) {
     const patterns = [
-        /youtube\.com\/playlist/,
-        /youtube\.com\/watch\?list=/,
-        /youtu\.be\//
+        /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=[a-zA-Z0-9_-]{11}/,
+        /(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=[a-zA-Z0-9_-]+/,
+        /(?:https?:\/\/)?youtu\.be\/[a-zA-Z0-9_-]{11}/,
+        /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/[a-zA-Z0-9_-]{11}/,
     ];
     return patterns.some(p => p.test(url));
 }
@@ -140,7 +150,7 @@ function setButtonLoading(loading) {
 }
 
 function formatFileName(name) {
-    return name.replace(/^[\w]+_/, '').replace(/\.mp3$/, '');
+    return name.replace(/^[\w]+_/, '').replace(/\.[^.]+$/, '');
 }
 
 function formatSize(bytes) {

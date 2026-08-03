@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YT to MP3 - Playlist Downloader</title>
+    <title>YT to MP3 - Video Downloader</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div class="container">
         <header>
             <h1>YT to MP3</h1>
-            <p class="subtitle">Download YouTube playlists as MP3 files</p>
+            <p class="subtitle">Download YouTube videos as MP3 files</p>
         </header>
 
         <main>
@@ -18,13 +18,20 @@
                 <input 
                     type="text" 
                     id="playlistUrl" 
-                    placeholder="Enter YouTube playlist URL..."
+                    placeholder="Paste YouTube video or playlist URL..."
                     autocomplete="off"
                 >
                 <button id="downloadBtn" onclick="startDownload()">
                     <span class="btn-text">Download</span>
                     <span class="btn-loader hidden"></span>
                 </button>
+            </div>
+
+            <div class="examples">
+                <p>Supported URLs:</p>
+                <code>https://www.youtube.com/watch?v=...</code>
+                <code>https://youtu.be/...</code>
+                <code>https://www.youtube.com/playlist?list=...</code>
             </div>
 
             <div id="status" class="status hidden">
@@ -37,7 +44,7 @@
             <div id="filesSection" class="files-section hidden">
                 <h2>Downloaded Files</h2>
                 <div id="filesList" class="files-list"></div>
-                <button class="download-all-btn" onclick="downloadAll()">Download All as ZIP</button>
+                <button class="download-all-btn" onclick="downloadAll()">Download All</button>
             </div>
 
             <div id="error" class="error hidden"></div>

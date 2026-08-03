@@ -39,7 +39,28 @@ h1 {
 .input-section {
     display: flex;
     gap: 12px;
+    margin-bottom: 16px;
+}
+
+.examples {
     margin-bottom: 30px;
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.examples p {
+    margin-bottom: 8px;
+}
+
+.examples code {
+    display: block;
+    background: #1a1a2e;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    color: #888;
+    font-size: 0.8rem;
+    word-break: break-all;
 }
 
 input[type="text"] {
