@@ -1,0 +1,7 @@
+{
+  "name": "yt-to-mp3",
+  "version": "1.0.0",
+  "dependencies": {
+    "@distube/ytdl-core": "^4.13.0"
+  }
+}
